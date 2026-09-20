@@ -1,0 +1,20 @@
+project:
+  type: website
+  output-dir: docs
+
+website:
+  title: "STA 9750 Submission Material"
+  description:
+    Course Projects for STA 9750 at Baruch College
+  site-url: https://github.com/romaygarcia3885-svg/STA9750-2026-FALL.git
+  navbar:
+    background: primary
+    search: false
+    
+format:
+  html:
+    theme: pulse
+    toc: false
+
+editor:
+  mode: source
