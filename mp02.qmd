@@ -697,27 +697,23 @@ CAR_LBS_PER_MILE <- 400 / 453.592   # grams -> pounds (~0.88 lbs/mile)
 # 33.7 kWh per gallon of gasoline (liquid fuels treated as gasoline-equivalent)
 KWH_PER_GALLON <- 33.7
 
-AGENCY_METRICS <- TRANSIT_EMISSIONS |>
+# Energy totals per agency, used for the electrification share
+agency_energy <- TRANSIT_EMISSIONS |>
   mutate(fuel_gallons = rowSums(pick(starts_with("Gallons of"))) +
                         `Kilograms of Hydrogen`,          # ~1 kg H2 per gallon-equivalent
          electric_kwh = `Kilowatt hours of Electric Battery` +
                         `Kilowatt hours of Electric Propulsion`) |>
-  group_by(`NTD ID`, `Agency Name`, state) |>
-  summarize(total_emissions_lbs = sum(total_emissions_lbs, na.rm = TRUE),
-            total_upt           = sum(total_upt, na.rm = TRUE),
-            passenger_miles     = sum(passenger_miles, na.rm = TRUE),
-            electric_kwh        = sum(electric_kwh, na.rm = TRUE),
-            fuel_gallons        = sum(fuel_gallons, na.rm = TRUE),
-            .groups = "drop") |>
-  filter(total_upt >= MIN_ANNUAL_UPT, passenger_miles > 0) |>
-  mutate(lbs_per_mile          = total_emissions_lbs / passenger_miles,
-         car_emissions_lbs     = passenger_miles * CAR_LBS_PER_MILE,
+  group_by(`NTD ID`) |>
+  summarize(electric_kwh = sum(electric_kwh, na.rm = TRUE),
+            fuel_gallons = sum(fuel_gallons, na.rm = TRUE),
+            .groups = "drop")
+
+# Build on the Task 6 agency table (same filters, size groups, lbs_per_mile)
+AGENCY_METRICS <- AGENCY_EMISSIONS |>
+  left_join(agency_energy, by = "NTD ID") |>
+  mutate(car_emissions_lbs     = passenger_miles * CAR_LBS_PER_MILE,
          emissions_avoided_lbs = car_emissions_lbs - total_emissions_lbs,
-         electric_share        = electric_kwh / (electric_kwh + fuel_gallons * KWH_PER_GALLON),
-         size = case_when(total_upt < SMALL_MAX_UPT  ~ "Small",
-                          total_upt < MEDIUM_MAX_UPT ~ "Medium",
-                          TRUE                       ~ "Large"),
-         size = factor(size, levels = c("Small", "Medium", "Large")))
+         electric_share        = electric_kwh / (electric_kwh + fuel_gallons * KWH_PER_GALLON))
 
 # Award 1: Greenest Transit Agency (lowest CO2 per passenger mile, by size)
 greenest <- AGENCY_METRICS |>
